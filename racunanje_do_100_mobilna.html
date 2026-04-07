@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Računanje do 100 – popravljena različica</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --primarna: #667eea;
+  --sekundarna: #764ba2;
+  --zelena: #4caf50;
+  --rdeca: #f44336;
+  --oranzna: #ff9800;
+  --svetla: #f8f9ff;
+  --siva: #888;
+}
+body {
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--primarna) 0%, var(--sekundarna) 100%);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.55s cubic-bezier(0.77, 0, 0.175, 1);
+  padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.screen.hidden-left { transform: translateX(-110%); opacity: 0; pointer-events: none; }
+.screen.hidden-right { transform: translateX(110%); opacity: 0; pointer-events: none; }
+.screen.visible { transform: translateX(0); opacity: 1; }
+.card {
+  background: #fff;
+  border-radius: 28px;
+  padding: 34px 30px;
+  width: 430px;
+  max-width: 95vw;
+  max-height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.23);
+  text-align: center;
+}
+
+button, input, select, textarea {
+  font: inherit;
+}
+button {
+  min-height: 44px;
+}
+input[type=number] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.izbira-ikona {
+  font-size: 4rem;
+  margin-bottom: 10px;
+  animation: nihaj 2s ease-in-out infinite;
+}
+@keyframes nihaj { 0%,100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+.izbira-naslov { font-size: 1.7rem; font-weight: 800; color: #333; margin-bottom: 6px; }
+.izbira-podnaslov { font-size: .95rem; color: var(--siva); margin-bottom: 26px; }
+.nacin-gumbi, .tezavnost-gumbi { display: flex; gap: 10px; margin-bottom: 22px; }
+.nacin-btn, .tez-btn, .stikalo-btn {
+  cursor: pointer; transition: .2s; border-radius: 14px; font-weight: 700;
+}
+.nacin-btn {
+  flex: 1; padding: 16px 10px; border: 3px solid transparent; background: #f5f5f5; color: #555; font-size: 1.02rem;
+}
+.nacin-btn:hover, .tez-btn:hover, .stikalo-btn:hover:not(:disabled) { transform: translateY(-2px); }
+.nacin-btn.sestevanje { border-color: var(--zelena); background: #e8f5e9; color: #2e7d32; }
+.nacin-btn.odstevanje { border-color: var(--rdeca); background: #ffebee; color: #c62828; }
+.nacin-btn.oba { border-color: #9c27b0; background: #f3e5f5; color: #6a1b9a; }
+.nacin-btn.aktiven, .tez-btn.aktiven, .stikalo-btn.aktiven {
+  box-shadow: 0 0 0 4px rgba(102,126,234,.15);
+  transform: translateY(-1px);
+}
+.tezavnost-naslov { font-size: .83rem; font-weight: 800; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.tez-btn, .stikalo-btn {
+  flex: 1; padding: 11px 10px; border: 2px solid #ddd; background: #fff; color: #666; font-size: .88rem;
+}
+.tez-btn.aktiven, .stikalo-btn.aktiven { border-color: var(--primarna); background: var(--primarna); color: #fff; }
+.zacni-btn, .ponovi-btn, .potrdi-btn {
+  background: linear-gradient(135deg, var(--primarna), var(--sekundarna));
+  color: white; border: none; border-radius: 14px; font-weight: 800; cursor: pointer; transition: .2s;
+}
+.zacni-btn { width: 100%; padding: 16px; font-size: 1.1rem; }
+.zacni-btn:hover, .ponovi-btn:hover, .potrdi-btn:hover { transform: translateY(-2px); }
+.igra-header {
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; margin-bottom: 18px;
+}
+.stat-blok {
+  background: var(--svetla); border-radius: 12px; padding: 8px 10px; text-align: center; min-width: 72px;
+}
+.stat-stevilka { font-size: 1.25rem; font-weight: 800; color: var(--primarna); }
+.stat-opis { font-size: .65rem; color: #aaa; font-weight: 600; text-transform: uppercase; }
+.napredek-wrap { background: #eee; border-radius: 10px; height: 10px; margin-bottom: 18px; overflow: hidden; }
+.napredek-bar { height: 100%; background: linear-gradient(90deg, var(--primarna), var(--sekundarna)); width: 0; transition: width .35s ease; }
+.serija-wrap { min-height: 28px; margin-bottom: 4px; }
+.serija-badge {
+  display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: .82rem; font-weight: 700;
+  background: linear-gradient(135deg, var(--oranzna), #ff5722); color: #fff; animation: pulziraj .45s ease;
+}
+.naloga-wrap {
+  position: relative; overflow: hidden; border-radius: 20px; padding: 24px 18px; margin-bottom: 20px;
+  background: linear-gradient(135deg, var(--primarna), var(--sekundarna));
+}
+.naloga-wrap::before {
+  content: ''; position: absolute; width: 110px; height: 110px; top: -35px; right: -35px; border-radius: 50%; background: rgba(255,255,255,.12);
+}
+.naloga-oznaka { font-size: .78rem; color: rgba(255,255,255,.75); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.naloga-besedilo { font-size: 2.2rem; font-weight: 900; color: #fff; line-height: 1.2; animation: prikazise .3s ease; }
+.naloga-namig { margin-top: 8px; font-size: .82rem; color: rgba(255,255,255,.7); min-height: 18px; }
+@keyframes prikazise { from { transform: scale(.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.moznosti { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.moznost-btn {
+  padding: 17px; border: 3px solid #e8e8e8; border-radius: 16px; font-size: 1.45rem; font-weight: 800;
+  cursor: pointer; background: #fff; color: #333; transition: .2s;
+}
+.moznost-btn:hover:not(:disabled) { border-color: var(--primarna); color: var(--primarna); box-shadow: 0 8px 20px rgba(0,0,0,.1); }
+.moznost-btn.pravilno, .moznost-btn.razkrij { background: var(--zelena); border-color: var(--zelena); color: #fff; }
+.moznost-btn.napacno { background: var(--rdeca); border-color: var(--rdeca); color: #fff; }
+.vnos-wrap { display: flex; gap: 10px; margin-bottom: 16px; }
+.vnos-polje {
+  flex: 1; padding: 15px; border: 3px solid #e8e8e8; border-radius: 14px; font-size: 1.6rem; font-weight: 800;
+  text-align: center; outline: none; transition: .2s;
+}
+.vnos-polje:focus { border-color: var(--primarna); }
+.vnos-polje.pravilno { border-color: var(--zelena); background: #e8f5e9; color: #2e7d32; }
+.vnos-polje.napacno { border-color: var(--rdeca); background: #ffebee; color: #c62828; }
+.potrdi-btn { padding: 15px 20px; font-size: 1.25rem; }
+.povratna {
+  min-height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 10px;
+  margin-bottom: 12px; font-size: .98rem; font-weight: 700; padding: 6px 8px;
+}
+.povratna.pravilno { background: #e8f5e9; color: #2e7d32; }
+.povratna.napacno { background: #ffebee; color: #c62828; }
+.povratna.prazno { background: transparent; color: transparent; }
+.spodnji-gumbi { display: flex; gap: 8px; }
+.izhod-btn, .preskoci-btn {
+  border: none; border-radius: 10px; background: #f5f5f5; color: #777; font-weight: 700; cursor: pointer; transition: .2s;
+}
+.izhod-btn { padding: 10px 16px; }
+.preskoci-btn { flex: 1; padding: 10px; }
+.izhod-btn:hover { background: #ffe0e0; color: var(--rdeca); }
+.preskoci-btn:hover:not(:disabled) { background: #fff3cd; color: #f57c00; }
+.rezultat-ikona { font-size: 4.8rem; margin-bottom: 8px; animation: skoci .55s cubic-bezier(.36,.07,.19,.97); }
+@keyframes skoci { 0% { transform: scale(0) rotate(-20deg); } 60% { transform: scale(1.15) rotate(4deg); } 100% { transform: scale(1) rotate(0); } }
+.rezultat-naslov { font-size: 1.5rem; font-weight: 800; color: #333; margin-bottom: 5px; }
+.rezultat-opis { font-size: .95rem; color: var(--siva); margin-bottom: 18px; }
+.krog-wrap { display: flex; justify-content: center; margin-bottom: 18px; }
+.krog-svg { transform: rotate(-90deg); }
+.krog-ozadje { fill: none; stroke: #eee; stroke-width: 10; }
+.krog-napredek {
+  fill: none; stroke-width: 10; stroke-linecap: round; stroke-dasharray: 283; stroke-dashoffset: 283; transition: stroke-dashoffset 1s ease;
+}
+.krog-sredina { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.krog-pct { font-size: 2rem; font-weight: 900; color: #333; }
+.krog-label { font-size: .76rem; color: #aaa; }
+.zvezde { font-size: 1.8rem; margin-bottom: 16px; }
+.stat-mreza { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+.stat-kartica { background: var(--svetla); border-radius: 14px; padding: 12px 8px; }
+.stat-k-ikona { font-size: 1.3rem; margin-bottom: 4px; }
+.stat-k-st { font-size: 1.2rem; font-weight: 800; color: #333; }
+.stat-k-opis { font-size: .68rem; color: #999; font-weight: 700; }
+.rezultat-gumbi { display: flex; gap: 10px; }
+.ponovi-btn { flex: 1; padding: 15px; font-size: 1rem; }
+.domov-btn {
+  padding: 15px 18px; border: none; border-radius: 14px; background: #f5f5f5; color: #666; font-size: 1rem; font-weight: 700; cursor: pointer;
+}
+.timer-krog { width: 46px; height: 46px; position: relative; }
+.timer-krog svg { transform: rotate(-90deg); }
+.timer-ozadje { fill: none; stroke: #eee; stroke-width: 4; }
+.timer-bar { fill: none; stroke-width: 4; stroke-linecap: round; stroke-dasharray: 113; stroke-dashoffset: 0; transition: stroke-dashoffset .1s linear, stroke .2s; }
+.timer-st { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: .84rem; font-weight: 800; }
+.pomoc-vrstica {
+  display: flex; gap: 8px; margin-bottom: 20px;
+}
+.pomoc-pill {
+  flex: 1; background: #f6f7fb; color: #5b6477; border-radius: 12px; padding: 10px 8px; font-size: .8rem; font-weight: 700;
+}
+.confetti-kos { position: fixed; width: 10px; height: 10px; border-radius: 2px; animation: padi linear forwards; pointer-events: none; z-index: 999; }
+@keyframes padi { 0% { transform: translateY(-20px) rotate(0deg); opacity: 1; } 100% { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
+@keyframes pulziraj { 50% { transform: scale(1.08); } }
+@keyframes tresenje { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+@media (max-width: 720px) {
+  body { align-items: stretch; justify-content: stretch; }
+  .screen { align-items: stretch; justify-content: stretch; }
+  .card {
+    width: 100%;
+    max-width: none;
+    min-height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    border-radius: 22px;
+    padding: 22px 16px;
+  }
+  .izbira-ikona { font-size: 3.3rem; }
+  .izbira-naslov { font-size: 1.45rem; }
+  .izbira-podnaslov { margin-bottom: 18px; }
+  .nacin-gumbi, .tezavnost-gumbi, .pomoc-vrstica { flex-direction: column; }
+  .nacin-btn, .tez-btn, .stikalo-btn, .zacni-btn, .ponovi-btn, .domov-btn, .izhod-btn, .preskoci-btn, .potrdi-btn, .moznost-btn { min-height: 52px; }
+  .moznosti { grid-template-columns: 1fr; gap: 8px; }
+  .moznost-btn { font-size: 1.3rem; padding: 15px; }
+  .igra-header { grid-template-columns: 1fr 56px 1fr; gap: 8px; }
+  .stat-blok { min-width: 0; padding: 8px 6px; }
+  .stat-stevilka { font-size: 1.1rem; }
+  .stat-opis { font-size: .62rem; }
+  .naloga-wrap { padding: 20px 14px; margin-bottom: 16px; }
+  .naloga-besedilo { font-size: 1.9rem; }
+  .vnos-wrap { flex-direction: column; }
+  .vnos-polje { min-height: 54px; font-size: 1.35rem; }
+  .spodnji-gumbi, .rezultat-gumbi { flex-direction: column; }
+  .stat-mreza { grid-template-columns: repeat(2, 1fr); }
+  .krog-wrap { margin-bottom: 14px; }
+}
+
+@media (max-width: 380px) {
+  .card { padding: 18px 12px; }
+  .naloga-besedilo { font-size: 1.65rem; }
+  .stat-mreza { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="screen visible" id="zaslon-izbira">
+  <div class="card">
+    <div class="izbira-ikona">🔢</div>
+    <div class="izbira-naslov">Računanje do 100</div>
+    <div class="izbira-podnaslov">Popravljena in dopolnjena različica</div>
+
+    <div class="tezavnost-naslov">Način</div>
+    <div class="nacin-gumbi" id="skupina-nacin">
+      <button class="nacin-btn sestevanje" data-nacin="sestevanje">➕<br>Seštevanje</button>
+      <button class="nacin-btn odstevanje" data-nacin="odstevanje">➖<br>Odštevanje</button>
+      <button class="nacin-btn oba aktiven" data-nacin="oba">➕➖<br>Oboje</button>
+    </div>
+
+    <div class="tezavnost-naslov">Težavnost</div>
+    <div class="tezavnost-gumbi" id="skupina-tezavnost">
+      <button class="tez-btn" data-tez="lahka">😊 Lahka</button>
+      <button class="tez-btn aktiven" data-tez="srednja">🙂 Srednja</button>
+      <button class="tez-btn" data-tez="tezka">😤 Težka</button>
+    </div>
+
+    <div class="tezavnost-naslov">Način odgovora</div>
+    <div class="tezavnost-gumbi" id="skupina-vnos">
+      <button class="stikalo-btn aktiven" data-vnos="izbira">🔘 Izbira</button>
+      <button class="stikalo-btn" data-vnos="vnos">✏️ Vnesi</button>
+    </div>
+
+    <div class="tezavnost-naslov">Število vprašanj</div>
+    <div class="tezavnost-gumbi" id="skupina-kolicina">
+      <button class="stikalo-btn" data-kolicina="10">10</button>
+      <button class="stikalo-btn aktiven" data-kolicina="15">15</button>
+      <button class="stikalo-btn" data-kolicina="20">20</button>
+    </div>
+
+    <div class="pomoc-vrstica">
+      <div class="pomoc-pill">⌨️ Enter za potrditev</div>
+      <div class="pomoc-pill">🏆 Rekord se shrani</div>
+    </div>
+
+    <button class="zacni-btn" id="zacni-btn">🚀 Začni igro!</button>
+  </div>
+</div>
+
+<div class="screen hidden-right" id="zaslon-igra">
+  <div class="card">
+    <div class="igra-header">
+      <div class="stat-blok">
+        <div class="stat-stevilka" id="prikaz-tocke">0</div>
+        <div class="stat-opis">Točke</div>
+      </div>
+
+      <div class="timer-krog">
+        <svg width="46" height="46" viewBox="0 0 46 46">
+          <circle class="timer-ozadje" cx="23" cy="23" r="18"></circle>
+          <circle class="timer-bar" id="timer-bar" cx="23" cy="23" r="18" stroke="#667eea"></circle>
+        </svg>
+        <div class="timer-st" id="timer-st">15</div>
+      </div>
+
+      <div class="stat-blok">
+        <div class="stat-stevilka" id="prikaz-vprasanj">1/15</div>
+        <div class="stat-opis">Vprašanje</div>
+      </div>
+    </div>
+
+    <div class="napredek-wrap"><div class="napredek-bar" id="napredek-bar"></div></div>
+    <div class="serija-wrap" id="serija-wrap"></div>
+
+    <div class="naloga-wrap">
+      <div class="naloga-oznaka">Izračunaj:</div>
+      <div class="naloga-besedilo" id="naloga-besedilo">? + ? = ?</div>
+      <div class="naloga-namig" id="naloga-namig"></div>
+    </div>
+
+    <div class="moznosti" id="moznosti-del">
+      <button class="moznost-btn" id="moz-0"></button>
+      <button class="moznost-btn" id="moz-1"></button>
+      <button class="moznost-btn" id="moz-2"></button>
+      <button class="moznost-btn" id="moz-3"></button>
+    </div>
+
+    <div class="vnos-wrap" id="vnos-del" style="display:none">
+      <input type="number" class="vnos-polje" id="vnos-polje" placeholder="?" min="0" max="100" />
+      <button class="potrdi-btn" id="potrdi-btn">✓</button>
+    </div>
+
+    <div class="povratna prazno" id="povratna">‎</div>
+
+    <div class="spodnji-gumbi">
+      <button class="izhod-btn" id="domov-igra-btn">🏠</button>
+      <button class="preskoci-btn" id="preskoci-btn">⏭ Preskoči</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen hidden-right" id="zaslon-rezultati">
+  <div class="card">
+    <div class="rezultat-ikona" id="rez-ikona">🎉</div>
+    <div class="rezultat-naslov" id="rez-naslov">Odlično!</div>
+    <div class="rezultat-opis" id="rez-opis">Vse si znal!</div>
+
+    <div class="krog-wrap">
+      <div style="position:relative; width:120px; height:120px; display:flex; align-items:center; justify-content:center;">
+        <svg width="120" height="120" viewBox="0 0 120 120" class="krog-svg">
+          <circle class="krog-ozadje" cx="60" cy="60" r="45"></circle>
+          <circle class="krog-napredek" id="krog-napredek" cx="60" cy="60" r="45" stroke="url(#grad)"></circle>
+          <defs>
+            <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color:#667eea"></stop>
+              <stop offset="100%" style="stop-color:#764ba2"></stop>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="krog-sredina">
+          <div class="krog-pct" id="krog-pct">0%</div>
+          <div class="krog-label">Uspešnost</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="zvezde" id="zvezde">⭐⭐⭐</div>
+
+    <div class="stat-mreza">
+      <div class="stat-kartica"><div class="stat-k-ikona">✅</div><div class="stat-k-st" id="st-pravilno">0</div><div class="stat-k-opis">Pravilno</div></div>
+      <div class="stat-kartica"><div class="stat-k-ikona">❌</div><div class="stat-k-st" id="st-napacno">0</div><div class="stat-k-opis">Napačno</div></div>
+      <div class="stat-kartica"><div class="stat-k-ikona">🏆</div><div class="stat-k-st" id="st-tocke">0</div><div class="stat-k-opis">Točke</div></div>
+      <div class="stat-kartica"><div class="stat-k-ikona">⚡</div><div class="stat-k-st" id="st-serija">0</div><div class="stat-k-opis">Najboljša serija</div></div>
+      <div class="stat-kartica"><div class="stat-k-ikona">⏱️</div><div class="stat-k-st" id="st-cas">0s</div><div class="stat-k-opis">Povpr. čas</div></div>
+      <div class="stat-kartica"><div class="stat-k-ikona">🎯</div><div class="stat-k-st" id="st-najvisje">0</div><div class="stat-k-opis">Rekord</div></div>
+    </div>
+
+    <div class="rezultat-gumbi">
+      <button class="domov-btn" id="domov-rez-btn">🏠</button>
+      <button class="ponovi-btn" id="ponovi-btn">🔄 Znova!</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const igra = {
+  nacin: 'oba',
+  tezavnost: 'srednja',
+  nacinVnosa: 'izbira',
+  skupajVprasanj: 15,
+  vprasanje: 0,
+  pravilno: 0,
+  napacno: 0,
+  preskoceno: 0,
+  tocke: 0,
+  serija: 0,
+  najboljsaSerija: 0,
+  casovnik: null,
+  casOstanek: 15,
+  casMax: 15,
+  skupajCas: 0,
+  merjeniOdgovori: 0,
+  trenutnaNaloga: null,
+  odgovorjeno: false,
+  rekord: parseInt(localStorage.getItem('rekord-racunanje-do-100') || '0', 10),
+  zacetekVprasanja: 0
+};
+
+const TEZAVNOST = {
+  lahka: { min: 1, max: 20, cas: 20, bonus: 1 },
+  srednja: { min: 5, max: 50, cas: 15, bonus: 2 },
+  tezka: { min: 10, max: 100, cas: 10, bonus: 3 }
+};
+
+const zasloni = {
+  izbira: document.getElementById('zaslon-izbira'),
+  igra: document.getElementById('zaslon-igra'),
+  rezultati: document.getElementById('zaslon-rezultati')
+};
+
+function preklopiAktivni(gumb, selector) {
+  document.querySelectorAll(selector).forEach(el => el.classList.remove('aktiven'));
+  gumb.classList.add('aktiven');
+}
+
+function pojdiNaZaslon(cilj) {
+  const vrstniRed = ['izbira', 'igra', 'rezultati'];
+  const trenutni = vrstniRed.find(id => zasloni[id].classList.contains('visible'));
+  const tIdx = vrstniRed.indexOf(trenutni);
+  const cIdx = vrstniRed.indexOf(cilj);
+  if (trenutni) zasloni[trenutni].className = 'screen ' + (cIdx > tIdx ? 'hidden-left' : 'hidden-right');
+  zasloni[cilj].className = 'screen visible';
+  if (cilj !== 'igra') ustaviCasovnik();
+}
+
+function naklj(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function generirajNalogo() {
+  const t = TEZAVNOST[igra.tezavnost];
+  let a, b, operacija, rezultat;
+
+  if (igra.nacin === 'sestevanje') operacija = '+';
+  else if (igra.nacin === 'odstevanje') operacija = '-';
+  else operacija = Math.random() < 0.5 ? '+' : '-';
+
+  if (operacija === '+') {
+    a = naklj(t.min, t.max);
+    b = naklj(t.min, Math.min(t.max, 100 - a));
+    rezultat = a + b;
+  } else {
+    a = naklj(Math.max(t.min + 1, 2), t.max);
+    b = naklj(t.min, a);
+    rezultat = a - b;
+  }
+
+  let namig = '';
+  if (igra.tezavnost === 'lahka') {
+    namig = operacija === '+' ? `(Začni pri ${a} in prištej ${b}.)` : `(Začni pri ${a} in odštej ${b}.)`;
+  } else if (igra.tezavnost === 'tezka') {
+    namig = 'Hitro in natančno!';
+  }
+
+  return { a, b, operacija, rezultat, namig };
+}
+
+function generirajMoznosti(pravilni) {
+  const moznosti = new Set([pravilni]);
+  while (moznosti.size < 4) {
+    const odmik = naklj(-15, 15);
+    const kandidat = pravilni + odmik;
+    if (odmik !== 0 && kandidat >= 0 && kandidat <= 100) moznosti.add(kandidat);
+  }
+  return [...moznosti].sort(() => Math.random() - 0.5);
+}
+
+function nastaviKontrole() {
+  document.getElementById('moznosti-del').style.display = igra.nacinVnosa === 'izbira' ? 'grid' : 'none';
+  document.getElementById('vnos-del').style.display = igra.nacinVnosa === 'vnos' ? 'flex' : 'none';
+}
+
+function zacniIgro() {
+  igra.vprasanje = 0;
+  igra.pravilno = 0;
+  igra.napacno = 0;
+  igra.preskoceno = 0;
+  igra.tocke = 0;
+  igra.serija = 0;
+  igra.najboljsaSerija = 0;
+  igra.skupajCas = 0;
+  igra.merjeniOdgovori = 0;
+  document.getElementById('prikaz-tocke').textContent = '0';
+  document.getElementById('serija-wrap').innerHTML = '';
+  nastaviKontrole();
+  pojdiNaZaslon('igra');
+  naslednjaNaloga();
+}
+
+function naslednjaNaloga() {
+  if (igra.vprasanje >= igra.skupajVprasanj) {
+    prikaziRezultate();
+    return;
+  }
+
+  igra.vprasanje++;
+  igra.odgovorjeno = false;
+  igra.zacetekVprasanja = Date.now();
+  igra.trenutnaNaloga = generirajNalogo();
+
+  const n = igra.trenutnaNaloga;
+  document.getElementById('naloga-besedilo').textContent = `${n.a} ${n.operacija} ${n.b} = ?`;
+  document.getElementById('naloga-namig').textContent = n.namig;
+  document.getElementById('prikaz-vprasanj').textContent = `${igra.vprasanje}/${igra.skupajVprasanj}`;
+  document.getElementById('napredek-bar').style.width = `${((igra.vprasanje - 1) / igra.skupajVprasanj) * 100}%`;
+  nastavljPovratno('', '');
+
+  if (igra.nacinVnosa === 'izbira') {
+    const moznosti = generirajMoznosti(n.rezultat);
+    moznosti.forEach((vrednost, i) => {
+      const btn = document.getElementById(`moz-${i}`);
+      btn.textContent = vrednost;
+      btn.dataset.vrednost = vrednost;
+      btn.className = 'moznost-btn';
+      btn.disabled = false;
+    });
+  } else {
+    const vnos = document.getElementById('vnos-polje');
+    vnos.value = '';
+    vnos.disabled = false;
+    vnos.className = 'vnos-polje';
+    setTimeout(() => vnos.focus(), 80);
+  }
+
+  document.getElementById('preskoci-btn').disabled = false;
+
+  ustaviCasovnik();
+  igra.casMax = TEZAVNOST[igra.tezavnost].cas;
+  igra.casOstanek = igra.casMax;
+  posodobiTimer();
+  igra.casovnik = setInterval(tickTimer, 100);
+}
+
+function tickTimer() {
+  igra.casOstanek = Math.max(0, igra.casOstanek - 0.1);
+  if (igra.casOstanek <= 0) {
+    ustaviCasovnik();
+    casIztecel();
+  }
+  posodobiTimer();
+}
+
+function posodobiTimer() {
+  const pct = igra.casOstanek / igra.casMax;
+  const obseg = 113;
+  const odmik = obseg * (1 - pct);
+  const bar = document.getElementById('timer-bar');
+  bar.style.strokeDashoffset = odmik;
+  bar.style.stroke = pct > 0.6 ? '#667eea' : pct > 0.3 ? '#ff9800' : '#f44336';
+  document.getElementById('timer-st').textContent = Math.ceil(igra.casOstanek);
+}
+
+function ustaviCasovnik() {
+  if (igra.casovnik) {
+    clearInterval(igra.casovnik);
+    igra.casovnik = null;
+  }
+}
+
+function onemogociVseMoznosti() {
+  for (let i = 0; i < 4; i++) {
+    const gumb = document.getElementById(`moz-${i}`);
+    gumb.disabled = true;
+  }
+  document.getElementById('preskoci-btn').disabled = true;
+}
+
+function razkrijPravilni() {
+  for (let i = 0; i < 4; i++) {
+    const gumb = document.getElementById(`moz-${i}`);
+    if (parseInt(gumb.dataset.vrednost, 10) === igra.trenutnaNaloga.rezultat) gumb.className = 'moznost-btn razkrij';
+  }
+}
+
+function nastavljPovratno(sporocilo, razred) {
+  const el = document.getElementById('povratna');
+  el.textContent = sporocilo || '‎';
+  el.className = 'povratna ' + (razred || 'prazno');
+}
+
+function posodobiSerijo() {
+  const wrap = document.getElementById('serija-wrap');
+  if (igra.serija >= 3) wrap.innerHTML = `<span class="serija-badge">🔥 ${igra.serija}× serija!</span>`;
+  else wrap.innerHTML = '';
+}
+
+function casIztecel() {
+  if (igra.odgovorjeno) return;
+  igra.odgovorjeno = true;
+  igra.napacno++;
+  igra.serija = 0;
+
+  nastavljPovratno(`⏰ Čas je potekel! Pravilen odgovor: ${igra.trenutnaNaloga.rezultat}`, 'napacno');
+
+  if (igra.nacinVnosa === 'izbira') {
+    onemogociVseMoznosti();
+    razkrijPravilni();
+  } else {
+    const vnos = document.getElementById('vnos-polje');
+    vnos.value = igra.trenutnaNaloga.rezultat;
+    vnos.disabled = true;
+    vnos.className = 'vnos-polje napacno';
+    document.getElementById('preskoci-btn').disabled = true;
+  }
+
+  posodobiSerijo();
+  setTimeout(naslednjaNaloga, 1700);
+}
+
+function obdelajOdgovor(izbran, gumb, cas) {
+  const pravilno = izbran === igra.trenutnaNaloga.rezultat;
+  const t = TEZAVNOST[igra.tezavnost];
+  igra.skupajCas += cas;
+  igra.merjeniOdgovori++;
+
+  if (pravilno) {
+    igra.pravilno++;
+    igra.serija++;
+    igra.najboljsaSerija = Math.max(igra.najboljsaSerija, igra.serija);
+
+    const casBonus = Math.max(0, Math.floor((igra.casMax - cas) * 2));
+    const serijaBonus = Math.min(igra.serija - 1, 5) * 5;
+    const pridobljene = 10 * t.bonus + casBonus + serijaBonus;
+    igra.tocke += pridobljene;
+    document.getElementById('prikaz-tocke').textContent = igra.tocke;
+    nastavljPovratno(`✅ Pravilno! +${pridobljene} točk`, 'pravilno');
+    if (gumb) gumb.className = 'moznost-btn pravilno';
+    onemogociVseMoznosti();
+  } else {
+    igra.napacno++;
+    igra.serija = 0;
+    nastavljPovratno(`❌ Napačno! Pravilen odgovor: ${igra.trenutnaNaloga.rezultat}`, 'napacno');
+    if (gumb) gumb.className = 'moznost-btn napacno';
+    if (igra.nacinVnosa === 'vnos') {
+      const vnos = document.getElementById('vnos-polje');
+      vnos.value = igra.trenutnaNaloga.rezultat;
+    }
+    onemogociVseMoznosti();
+    if (igra.nacinVnosa === 'izbira') razkrijPravilni();
+  }
+
+  posodobiSerijo();
+  setTimeout(naslednjaNaloga, pravilno ? 1100 : 1700);
+}
+
+function preveriOdgovor(idx) {
+  if (igra.odgovorjeno) return;
+  igra.odgovorjeno = true;
+  ustaviCasovnik();
+  const gumb = document.getElementById(`moz-${idx}`);
+  const izbran = parseInt(gumb.dataset.vrednost, 10);
+  const cas = (Date.now() - igra.zacetekVprasanja) / 1000;
+  obdelajOdgovor(izbran, gumb, cas);
+}
+
+function preveriVnos() {
+  if (igra.odgovorjeno) return;
+  const vnos = document.getElementById('vnos-polje');
+  const vrednost = parseInt(vnos.value, 10);
+  if (Number.isNaN(vrednost) || vrednost < 0 || vrednost > 100) {
+    vnos.style.animation = 'tresenje 0.4s ease';
+    setTimeout(() => vnos.style.animation = '', 400);
+    return;
+  }
+  igra.odgovorjeno = true;
+  ustaviCasovnik();
+  vnos.disabled = true;
+  const pravilno = vrednost === igra.trenutnaNaloga.rezultat;
+  vnos.className = `vnos-polje ${pravilno ? 'pravilno' : 'napacno'}`;
+  const cas = (Date.now() - igra.zacetekVprasanja) / 1000;
+  obdelajOdgovor(vrednost, null, cas);
+}
+
+function preskoci() {
+  if (igra.odgovorjeno) return;
+  igra.odgovorjeno = true;
+  ustaviCasovnik();
+  igra.preskoceno++;
+  igra.serija = 0;
+  nastavljPovratno(`⏭ Preskočeno! Odgovor: ${igra.trenutnaNaloga.rezultat}`, 'napacno');
+  if (igra.nacinVnosa === 'izbira') {
+    onemogociVseMoznosti();
+    razkrijPravilni();
+  } else {
+    const vnos = document.getElementById('vnos-polje');
+    vnos.value = igra.trenutnaNaloga.rezultat;
+    vnos.disabled = true;
+    vnos.className = 'vnos-polje napacno';
+    document.getElementById('preskoci-btn').disabled = true;
+  }
+  posodobiSerijo();
+  setTimeout(naslednjaNaloga, 1500);
+}
+
+function animirajStevec(idEl, od, cilj, trajanje, suffix = '') {
+  const el = document.getElementById(idEl);
+  const korak = (cilj - od) / (trajanje / 16);
+  let trenutni = od;
+  const interval = setInterval(() => {
+    trenutni = korak >= 0 ? Math.min(trenutni + korak, cilj) : Math.max(trenutni + korak, cilj);
+    el.textContent = Math.round(trenutni) + suffix;
+    if (trenutni === cilj) clearInterval(interval);
+  }, 16);
+}
+
+function sproziConfetti() {
+  const barve = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff9ff3','#54a0ff'];
+  for (let i = 0; i < 70; i++) {
+    setTimeout(() => {
+      const kos = document.createElement('div');
+      kos.className = 'confetti-kos';
+      kos.style.cssText = `left:${Math.random()*100}vw;top:-20px;background:${barve[Math.floor(Math.random()*barve.length)]};width:${naklj(6,14)}px;height:${naklj(6,14)}px;border-radius:${Math.random()>0.5?'50%':'2px'};animation-duration:${naklj(15,35)/10}s;`;
+      document.body.appendChild(kos);
+      setTimeout(() => kos.remove(), 4000);
+    }, i * 35);
+  }
+}
+
+function prikaziRezultate() {
+  const pct = Math.round((igra.pravilno / igra.skupajVprasanj) * 100);
+  const povprecenCas = igra.merjeniOdgovori ? (igra.skupajCas / igra.merjeniOdgovori).toFixed(1) : '0.0';
+
+  if (igra.tocke > igra.rekord) {
+    igra.rekord = igra.tocke;
+    localStorage.setItem('rekord-racunanje-do-100', String(igra.rekord));
+  }
+
+  let ikona, naslov, opis;
+  if (pct === 100) { ikona = '🏆'; naslov = 'Odlično!'; opis = 'Vse si rešil brez napake!'; }
+  else if (pct >= 80) { ikona = '🌟'; naslov = 'Zelo dobro!'; opis = 'Skoraj popolno!'; }
+  else if (pct >= 60) { ikona = '😊'; naslov = 'Dobro!'; opis = 'Še malo vaje in bo super.'; }
+  else if (pct >= 40) { ikona = '🤔'; naslov = 'Vadi naprej!'; opis = 'Gre že bolje, nadaljuj.'; }
+  else { ikona = '💪'; naslov = 'Ne obupaj!'; opis = 'Vaja dela mojstra.'; }
+
+  document.getElementById('rez-ikona').textContent = ikona;
+  document.getElementById('rez-naslov').textContent = naslov;
+  document.getElementById('rez-opis').textContent = opis;
+  document.getElementById('zvezde').textContent = pct >= 90 ? '⭐⭐⭐' : pct >= 60 ? '⭐⭐' : '⭐';
+  document.getElementById('st-pravilno').textContent = igra.pravilno;
+  document.getElementById('st-napacno').textContent = igra.napacno + igra.preskoceno;
+  document.getElementById('st-tocke').textContent = igra.tocke;
+  document.getElementById('st-serija').textContent = igra.najboljsaSerija;
+  document.getElementById('st-cas').textContent = `${povprecenCas}s`;
+  document.getElementById('st-najvisje').textContent = igra.rekord;
+
+  const obseg = 283;
+  const odmik = obseg * (1 - pct / 100);
+  const krog = document.getElementById('krog-napredek');
+  krog.style.strokeDashoffset = obseg;
+  krog.style.stroke = pct >= 80 ? '#4CAF50' : pct >= 50 ? '#ff9800' : '#f44336';
+
+  document.getElementById('napredek-bar').style.width = '100%';
+  pojdiNaZaslon('rezultati');
+
+  setTimeout(() => {
+    krog.style.strokeDashoffset = odmik;
+    animirajStevec('krog-pct', 0, pct, 1000, '%');
+  }, 250);
+
+  if (pct >= 80) sproziConfetti();
+}
+
+function domov() {
+  ustaviCasovnik();
+  pojdiNaZaslon('izbira');
+}
+
+// dogodki
+Array.from(document.querySelectorAll('#skupina-nacin .nacin-btn')).forEach(btn => {
+  btn.addEventListener('click', () => {
+    igra.nacin = btn.dataset.nacin;
+    preklopiAktivni(btn, '#skupina-nacin .nacin-btn');
+  });
+});
+Array.from(document.querySelectorAll('#skupina-tezavnost .tez-btn')).forEach(btn => {
+  btn.addEventListener('click', () => {
+    igra.tezavnost = btn.dataset.tez;
+    preklopiAktivni(btn, '#skupina-tezavnost .tez-btn');
+  });
+});
+Array.from(document.querySelectorAll('#skupina-vnos .stikalo-btn')).forEach(btn => {
+  btn.addEventListener('click', () => {
+    igra.nacinVnosa = btn.dataset.vnos;
+    preklopiAktivni(btn, '#skupina-vnos .stikalo-btn');
+  });
+});
+Array.from(document.querySelectorAll('#skupina-kolicina .stikalo-btn')).forEach(btn => {
+  btn.addEventListener('click', () => {
+    igra.skupajVprasanj = parseInt(btn.dataset.kolicina, 10);
+    preklopiAktivni(btn, '#skupina-kolicina .stikalo-btn');
+  });
+});
+for (let i = 0; i < 4; i++) document.getElementById(`moz-${i}`).addEventListener('click', () => preveriOdgovor(i));
+document.getElementById('potrdi-btn').addEventListener('click', preveriVnos);
+document.getElementById('vnos-polje').addEventListener('keydown', e => { if (e.key === 'Enter') preveriVnos(); });
+document.getElementById('preskoci-btn').addEventListener('click', preskoci);
+document.getElementById('zacni-btn').addEventListener('click', zacniIgro);
+document.getElementById('ponovi-btn').addEventListener('click', zacniIgro);
+document.getElementById('domov-igra-btn').addEventListener('click', domov);
+document.getElementById('domov-rez-btn').addEventListener('click', domov);
+</script>
+</body>
+</html>
